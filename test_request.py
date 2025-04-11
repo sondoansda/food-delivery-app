@@ -2,6 +2,7 @@ import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Sử dụng URL đúng với route /api/restaurants
 URL = "http://localhost:8080/food-delivery-app/public/restaurants?page=2"
 TOTAL_REQUESTS = 1000
 CONCURRENT_REQUESTS = 1000
@@ -13,30 +14,32 @@ def send_request(index):
     global failed_requests
     start_time = time.time()
     try:
-        response = requests.get(URL, timeout=10)
-
+        # Thêm header Accept: application/json để đảm bảo nhận JSON
+        headers = {"Accept": "application/json"}
+        response = requests.get(URL, headers=headers, timeout=10)
         if response.status_code == 200:
             print(f"✅ #{index} Status: {response.status_code}")
             return time.time() - start_time
         else:
-            print(f"❌ #{index} Status: {response.status_code} ")
+            print(f"❌ #{index} Status: {response.status_code} - {response.text[:100]}")
             failed_requests += 1
             return None
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"💥 #{index} Exception: {e}")
         failed_requests += 1
         return None
 
-# Kiểm tra thử URL trước
+# Kiểm tra URL trước
 try:
-    test = requests.get(URL, timeout=10)
+    headers = {"Accept": "application/json"}
+    test = requests.get(URL, headers=headers, timeout=15)
     print("🔎 Test URL:", URL)
     print("✅ Test Status:", test.status_code)
     print("🧾 Sample content:", test.text[:100])
-except Exception as e:
+except requests.exceptions.RequestException as e:
     print("💥 Failed to connect:", e)
 
-# Chạy test hiệu năng có đánh chỉ số
+# Chạy test
 start = time.time()
 with ThreadPoolExecutor(max_workers=CONCURRENT_REQUESTS) as executor:
     futures = {executor.submit(send_request, i + 1): i + 1 for i in range(TOTAL_REQUESTS)}
@@ -52,7 +55,6 @@ avg_time = sum(response_times) / len(response_times) if response_times else 0
 min_time = min(response_times) if response_times else 0
 max_time = max(response_times) if response_times else 0
 
-# In kết quả cuối cùng
 print("\n📊 Test Summary:")
 print({
     "Total Requests": TOTAL_REQUESTS,
